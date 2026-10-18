@@ -39,7 +39,9 @@
 
 - 響應式設計（支援電腦與手機）
 - Loading 狀態與錯誤處理
-- Mock 資料模式（便於前端獨立開發）
+- Pinia store 內建 Mock 資料模式（預設關閉，便於前端獨立開發）
+
+> 目前儀表板頁面從已載入的報修資料計算案件數、今日新增、逾期及平均處理時間；報修 API 預設每頁 10 筆，因此這些前端計算並非整體資料統計。設備總數（86）與本週成長（12%）仍是示範值。後端另有儀表板統計 API，但目前前端尚未串接。
 
 ## 前端頁面示意
 
@@ -70,7 +72,7 @@
 ### Backend
 
 - PHP 8.2+
-- Laravel 11
+- Laravel 12
 - SQLite（開發環境）
 - RESTful API + Laravel Sanctum 認證
 
@@ -142,6 +144,10 @@
 
 `Base URL：http://localhost:8000/api`
 
+除註冊與登入外，API 路由皆受 `auth:sanctum` 保護，請求需帶入 `Authorization: Bearer <token>`。前端 Axios 會從瀏覽器 `localStorage` 的 `token` 欄位讀取 Token；目前前端尚未提供登入頁面。
+
+目前前端新增報修表單固定送出 `reported_by: 1`，尚未依登入使用者動態設定；使用種子資料時此 ID 對應測試管理員。
+
 ### 認證相關（Auth）
 
 | 方法 | Endpoint         | 說明       | Request Body            | 備註       |
@@ -154,7 +160,7 @@
 
 | 方法   | Endpoint          | 說明         | Request Body / Params                                                     | 備註     |
 | ------ | ----------------- | ------------ | ------------------------------------------------------------------------- | -------- |
-| GET    | `/equipment`      | 取得設備列表 | `?search=xxx&status=active`                                               | 支援分頁 |
+| GET    | `/equipment`      | 取得設備列表 | `?search=xxx&status=active`                                               | 搜尋名稱、序號、位置；每頁 10 筆 |
 | GET    | `/equipment/{id}` | 取得單一設備 | -                                                                         | -        |
 | POST   | `/equipment`      | 新增設備     | `name, type, serial_number, status, location, purchase_date, description` | -        |
 | PUT    | `/equipment/{id}` | 更新設備     | 同新增設備欄位                                                            | -        |
@@ -164,10 +170,10 @@
 
 | 方法   | Endpoint               | 說明           | Request Body / Params                                     | 備註     |
 | ------ | ---------------------- | -------------- | --------------------------------------------------------- | -------- |
-| GET    | `/repairs`             | 取得報修列表   | `?status=pending&search=關鍵字`                           | 支援分頁 |
+| GET    | `/repairs`             | 取得報修列表   | `?status=pending&search=關鍵字`                           | 標題搜尋；每頁 10 筆 |
 | GET    | `/repairs/{id}`        | 取得單一報修單 | -                                                         | -        |
-| POST   | `/repairs`             | 新增報修單     | `title, description, equipment_id, priority, reported_by` | -        |
-| PUT    | `/repairs/{id}`        | 更新報修單     | 同新增報修單欄位                                          | -        |
+| POST   | `/repairs`             | 新增報修單     | `title, description, equipment_id, priority, reported_by` | 狀態與報修時間由後端建立 |
+| PUT    | `/repairs/{id}`        | 更新報修單     | `title, description, equipment_id, priority, assigned_to` | 欄位皆可省略 |
 | PATCH  | `/repairs/{id}/status` | 更新報修狀態   | `{ "status": "processing" }`                              | 推薦使用 |
 | DELETE | `/repairs/{id}`        | 刪除報修單     | -                                                         | -        |
 
@@ -178,7 +184,9 @@
 | GET  | `/repairs/{id}/logs` | 取得指定報修單的異動紀錄 | -              |
 | POST | `/repairs/{id}/logs` | 新增報修操作紀錄         | `action, note` |
 
-### 儀表板統計（Dashboard API）
+狀態更新及新增紀錄目前以 `user_id` 記錄操作人；未傳入時後端會使用 ID `1`，尚未自動讀取 Sanctum 的登入者。
+
+### 儀表板統計（Dashboard API；目前前端尚未串接）
 
 | 方法 | Endpoint                    | 說明                                                               |
 | ---- | --------------------------- | ------------------------------------------------------------------ |
@@ -198,33 +206,27 @@ equipflow/                          # 專案根目錄
 │   │   │   │   ├── RepairController.php
 │   │   │   │   ├── RepairLogController.php
 │   │   │   │   └── DashboardController.php
-│   │   │   ├── Requests/           # 表單驗證
 │   │   │   └── Middleware/
 │   │   ├── Models/                 # Eloquent Model
 │   │   │   ├── User.php
 │   │   │   ├── Equipment.php
 │   │   │   ├── Repair.php
 │   │   │   └── RepairLog.php
-│   │   ├── Services/               # 商業邏輯
 │   │   └── Providers/
 │   ├── database/
 │   │   ├── migrations/             # 資料表遷移
-│   │   │   ├── create_users_table.php
-│   │   │   ├── create_equipment_table.php
-│   │   │   ├── create_repairs_table.php
-│   │   │   └── create_repair_logs_table.php
 │   │   ├── seeders/                # 測試資料
 │   │   │   ├── DatabaseSeeder.php
 │   │   │   ├── UserSeeder.php
 │   │   │   ├── EquipmentSeeder.php
 │   │   │   ├── RepairSeeder.php
 │   │   │   └── RepairLogSeeder.php
-│   │   └── database.sqlite         # SQLite 資料庫檔案
+│   │   └── database.sqlite         # 本機建立的 SQLite 資料庫（不提交）
 │   ├── routes/
 │   │   └── api.php                 # API 路由
 │   ├── tests/
 │   ├── composer.json
-│   ├── .env
+│   ├── .env.example
 │   └── artisan
 │
 ├── frontend/                       # === Vue 3 前端 ===
@@ -267,7 +269,7 @@ equipflow/                          # 專案根目錄
 │   │   │
 │   │   ├── utils/                  # 工具函式
 │   │   │   ├── formatData.js
-│   │   │   └── statuscolor.js
+│   │   │   └── statusColor.js
 │   │   │
 │   │   ├── views/                  # 頁面元件
 │   │   │   ├── DashboardView.vue
@@ -326,27 +328,22 @@ cd backend
 composer install
 
 # 複製環境設定檔
-cp .env.example .env
-
-# 修改 .env 設定 SQLite
-# DB_CONNECTION=sqlite
+Copy-Item .env.example .env
 
 # 建立 SQLite 檔案
-touch database/database.sqlite
+php -r "file_exists('database/database.sqlite') || touch('database/database.sqlite');"
 
 # 產生應用程式金鑰
 php artisan key:generate
 
-# 安裝 Sanctum
-composer require laravel/sanctum
-php artisan vendor:publish --provider="Laravel\Sanctum\SanctumServiceProvider"
-
 # 建立資料庫與測試資料
-php artisan migrate:fresh --seed
+php artisan migrate --seed
 
 # 啟動 Laravel 開發伺服器
 php artisan serve
 ```
+
+上方複製 `.env.example` 的 `Copy-Item` 指令適用 PowerShell；使用 Bash 時請改用 `cp .env.example .env`。
 
 ### 前後端同時開發
 
@@ -370,6 +367,10 @@ npm run serve
 
 前端：http://localhost:8080
 後端 API：http://localhost:8000
+
+前端預設 API 位址為 `http://localhost:8000/api`；如需覆寫，可在 `frontend/.env.local` 設定 `VUE_APP_API_URL`。
+
+> `--seed` 會建立純示範資料。種子使用者的電子郵件為 `example.invalid` 保留測試網域，密碼每次播種時隨機產生，並非可登入的固定示範帳密。正式環境請勿使用示範資料。
 
 ## 版權聲明
 

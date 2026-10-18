@@ -5,33 +5,34 @@ namespace Database\Seeders;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 class UserSeeder extends Seeder
 {
     public function run(): void
     {
         User::create([
-            'name'       => '系統管理員',
-            'email'      => 'admin@equipflow.com',
-            'password'   => Hash::make('password123'),
+            'name'       => '測試管理員',
+            'email'      => 'admin@equipflow.example.invalid',
+            'password'   => Hash::make(Str::random(40)),
             'role'       => 'admin',
-            'department' => '資訊部',
+            'department' => '示範資訊組',
         ]);
 
         User::create([
-            'name'       => '王小明',
-            'email'      => 'staff@equipflow.com',
-            'password'   => Hash::make('password123'),
+            'name'       => '測試員工',
+            'email'      => 'staff@equipflow.example.invalid',
+            'password'   => Hash::make(Str::random(40)),
             'role'       => 'staff',
-            'department' => '總務部',
+            'department' => '示範行政組',
         ]);
 
         User::create([
-            'name'       => '李維修',
-            'email'      => 'tech@equipflow.com',
-            'password'   => Hash::make('password123'),
+            'name'       => '測試維修人員',
+            'email'      => 'technician@equipflow.example.invalid',
+            'password'   => Hash::make(Str::random(40)),
             'role'       => 'technician',
-            'department' => '維修部',
+            'department' => '示範維護組',
         ]);
     }
 }
